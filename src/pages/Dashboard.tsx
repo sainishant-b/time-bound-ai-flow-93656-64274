@@ -118,13 +118,16 @@ export default function Dashboard() {
       <header className="sticky top-0 z-50 w-full border-b bg-background">
         <div className="container flex h-14 items-center justify-between px-4 mx-auto">
           <div className="flex items-center gap-6">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3" onClick={() => navigate('/home')} style={{ cursor: 'pointer' }}>
               <div className="w-7 h-7 rounded-full border border-foreground flex items-center justify-center">
                 <Sparkles className="w-4 h-4" />
               </div>
               <span className="text-lg font-light tracking-tight">AI Access Hub</span>
             </div>
             <nav className="hidden md:flex items-center gap-4">
+              <Button variant="ghost" size="sm" onClick={() => navigate('/home')} className="h-8 px-3">
+                Home
+              </Button>
               <Button variant="ghost" size="sm" className="h-8 px-3 bg-secondary">
                 Dashboard
               </Button>

@@ -25,7 +25,7 @@ export default function Auth() {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`,
+          emailRedirectTo: `${window.location.origin}/home`,
         },
       });
 
@@ -62,7 +62,7 @@ export default function Auth() {
         title: "Welcome back!",
         description: "Successfully signed in.",
       });
-      navigate("/dashboard");
+      navigate("/home");
     } catch (error: any) {
       toast({
         title: "Error",
