@@ -67,13 +67,18 @@ export const ChatInterface = ({ session, onTokenUpdate }: ChatInterfaceProps) =>
     if (!conversationId) return;
 
     try {
-      await (supabase as any)
+      const { error } = await (supabase as any)
         .from('chat_messages')
         .insert({
           conversation_id: conversationId,
           role,
           content,
         });
+
+      if (error) {
+        console.error('Error saving message:', error);
+        throw error;
+      }
     } catch (error) {
       console.error('Error saving message:', error);
     }
