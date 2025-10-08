@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Zap } from "lucide-react";
+import { PaymentForm } from "./PaymentForm";
 
 interface PlanSelectorProps {
   onSessionStart: () => void;
@@ -39,8 +40,9 @@ export const PlanSelector = ({ onSessionStart }: PlanSelectorProps) => {
   const [selectedPlan, setSelectedPlan] = useState("standard");
   const [hours, setHours] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [showPayment, setShowPayment] = useState(false);
 
-  const handleStartSession = async () => {
+  const handlePayment = async () => {
     setLoading(true);
     try {
       const plan = plans.find(p => p.id === selectedPlan);
@@ -49,8 +51,8 @@ export const PlanSelector = ({ onSessionStart }: PlanSelectorProps) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
-      // Simulate payment (in real app, integrate with payment gateway)
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Simulate payment processing
+      await new Promise(resolve => setTimeout(resolve, 1500));
 
       // Create session
       const expiresAt = new Date();
@@ -69,7 +71,7 @@ export const PlanSelector = ({ onSessionStart }: PlanSelectorProps) => {
       if (error) throw error;
 
       toast({
-        title: "Session Started!",
+        title: "Payment Successful!",
         description: `Your ${hours} hour ${plan.name} session is now active.`,
       });
 
@@ -87,6 +89,17 @@ export const PlanSelector = ({ onSessionStart }: PlanSelectorProps) => {
 
   const selectedPlanData = plans.find(p => p.id === selectedPlan);
   const price = selectedPlanData?.prices[hours as keyof typeof selectedPlanData.prices] || 0;
+
+  if (showPayment) {
+    return (
+      <PaymentForm
+        amount={price}
+        onSubmit={handlePayment}
+        onCancel={() => setShowPayment(false)}
+        loading={loading}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -144,11 +157,11 @@ export const PlanSelector = ({ onSessionStart }: PlanSelectorProps) => {
 
         <Button 
           className="w-full h-11" 
-          onClick={handleStartSession}
+          onClick={() => setShowPayment(true)}
           disabled={loading}
         >
           <Zap className="w-4 h-4 mr-2" />
-          {loading ? "Processing..." : "Start Session"}
+          Continue to Payment
         </Button>
       </div>
     </div>
