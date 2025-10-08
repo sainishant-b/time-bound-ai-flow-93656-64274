@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Check } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -22,8 +24,37 @@ interface PricingCardProps {
 
 export const PricingCard = ({ tier }: PricingCardProps) => {
   const navigate = useNavigate();
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   return (
+    <>
+    <AlertDialog open={showConfirmation} onOpenChange={setShowConfirmation}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Confirm Your Selection</AlertDialogTitle>
+          <AlertDialogDescription className="space-y-3">
+            <p>You've selected the <span className="font-semibold text-foreground">{tier.name}</span> plan with {tier.model}.</p>
+            <div className="bg-secondary/50 p-4 rounded-lg space-y-2">
+              <div className="flex justify-between text-sm">
+                <span>Starting price:</span>
+                <span className="font-semibold">₹{tier.prices.oneHour}/hour</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span>2 hours:</span>
+                <span className="font-semibold">₹{tier.prices.twoHours}</span>
+              </div>
+            </div>
+            <p className="text-sm">Continue to sign up and start your session?</p>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={() => navigate('/auth')}>
+            Continue to Sign Up
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
     <Card 
       className={`relative group transition-all duration-500 border backdrop-blur-sm h-full ${
         tier.popular 
@@ -87,11 +118,12 @@ export const PricingCard = ({ tier }: PricingCardProps) => {
               ? 'bg-white text-black hover:bg-white/90 shadow-lg hover:shadow-xl' 
               : 'border-white/30 hover:bg-white hover:text-black'
           }`}
-          onClick={() => navigate('/auth')}
+          onClick={() => setShowConfirmation(true)}
         >
           Get Started
         </Button>
       </CardFooter>
     </Card>
+    </>
   );
 };
