@@ -3,12 +3,20 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { LogOut, Sparkles } from "lucide-react";
+import { LogOut, Sparkles, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Session, User } from "@supabase/supabase-js";
 import { PlanSelector } from "@/components/PlanSelector";
 import { SessionTimer } from "@/components/SessionTimer";
 import { ChatInterface } from "@/components/ChatInterface";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -18,6 +26,7 @@ export default function Dashboard() {
   const [activeSession, setActiveSession] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [tokenStats, setTokenStats] = useState<{ used: number; limit: number } | null>(null);
+  const [showPlanSelector, setShowPlanSelector] = useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -138,12 +147,42 @@ export default function Dashboard() {
       <div className="container mx-auto px-4 py-8 space-y-6 max-w-5xl">
         {activeSession ? (
           <>
-            <SessionTimer 
-              session={activeSession} 
-              onExpire={loadActiveSession}
-              tokensUsed={tokenStats?.used}
-              tokenLimit={tokenStats?.limit}
-            />
+            <div className="flex items-center justify-between">
+              <SessionTimer 
+                session={activeSession} 
+                onExpire={loadActiveSession}
+                tokensUsed={tokenStats?.used}
+                tokenLimit={tokenStats?.limit}
+              />
+              <Dialog open={showPlanSelector} onOpenChange={setShowPlanSelector}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-9">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Buy Another Session
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+                  <DialogHeader>
+                    <DialogTitle className="text-xl font-light">Purchase Additional Session</DialogTitle>
+                    <DialogDescription className="text-sm">
+                      Your current session will remain active. Select a plan for your next session.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="mt-4">
+                    <PlanSelector 
+                      onSessionStart={() => {
+                        loadActiveSession();
+                        setShowPlanSelector(false);
+                        toast({
+                          title: "Session Queued",
+                          description: "Your new session will be available when the current one expires.",
+                        });
+                      }} 
+                    />
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
             <ChatInterface 
               session={activeSession}
               onTokenUpdate={(used, limit) => setTokenStats({ used, limit })}
