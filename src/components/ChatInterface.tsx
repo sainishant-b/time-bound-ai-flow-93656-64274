@@ -2,9 +2,10 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
-import { Send, Sparkles } from "lucide-react";
+import { Send, Sparkles, Copy, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { FileUpload } from "@/components/chat/FileUpload";
 
 interface Message {
   role: "user" | "assistant";
@@ -32,6 +33,7 @@ export const ChatInterface = ({ session, onTokenUpdate }: ChatInterfaceProps) =>
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [attachedFiles, setAttachedFiles] = useState<any[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -157,6 +159,67 @@ export const ChatInterface = ({ session, onTokenUpdate }: ChatInterfaceProps) =>
     }
   };
 
+  const copyToClipboard = (content: string) => {
+    navigator.clipboard.writeText(content);
+    toast({
+      title: "Copied",
+      description: "Message copied to clipboard",
+    });
+  };
+
+  const handleRegenerate = async () => {
+    if (messages.length < 2 || isTyping) return;
+
+    // Remove the last assistant message
+    const updatedMessages = messages.slice(0, -1);
+    setMessages(updatedMessages);
+    setIsTyping(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("chat", {
+        body: {
+          messages: updatedMessages,
+          sessionId: session.id,
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.error) {
+        toast({
+          title: "Error",
+          description: data.error,
+          variant: "destructive",
+        });
+        setIsTyping(false);
+        return;
+      }
+
+      const aiResponse: Message = {
+        role: "assistant",
+        content: data.message,
+      };
+
+      setMessages((prev) => [...prev, aiResponse]);
+      
+      if (conversationId) {
+        await saveMessage('assistant', aiResponse.content);
+      }
+      
+      if (onTokenUpdate) {
+        onTokenUpdate(data.tokensUsed, data.tokenLimit);
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to regenerate response",
+        variant: "destructive",
+      });
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -177,16 +240,24 @@ export const ChatInterface = ({ session, onTokenUpdate }: ChatInterfaceProps) =>
           {messages.map((message, index) => (
             <div
               key={index}
-              className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+              className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} group`}
             >
               <div
-                className={`max-w-[80%] rounded px-4 py-3 ${
+                className={`max-w-[80%] rounded px-4 py-3 relative ${
                   message.role === "user"
                     ? "bg-foreground text-background"
                     : "bg-secondary text-foreground border border-border"
                 }`}
               >
                 <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => copyToClipboard(message.content)}
+                  className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <Copy className="w-3 h-3" />
+                </Button>
               </div>
             </div>
           ))}
@@ -204,23 +275,43 @@ export const ChatInterface = ({ session, onTokenUpdate }: ChatInterfaceProps) =>
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="flex gap-2">
-          <Textarea
+        <div className="space-y-2">
+          <FileUpload onFilesSelected={setAttachedFiles} />
+          
+          <div className="flex gap-2">
+            <div className="flex-1 space-y-2">
+              <Textarea
             placeholder="Type your message..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            className="min-h-[60px] max-h-[120px] resize-none"
-            disabled={isTyping}
-          />
-          <Button
-            onClick={handleSend}
-            disabled={!input.trim() || isTyping}
-            size="icon"
-            className="h-[60px] w-[60px] shrink-0"
-          >
-            <Send className="w-4 h-4" />
-          </Button>
+                className="min-h-[60px] max-h-[120px] resize-none"
+                disabled={isTyping}
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Button
+                onClick={handleSend}
+                disabled={!input.trim() || isTyping}
+                size="icon"
+                className="h-[60px] w-[60px] shrink-0"
+              >
+                <Send className="w-4 h-4" />
+              </Button>
+              {messages.length > 1 && messages[messages.length - 1]?.role === "assistant" && (
+                <Button
+                  onClick={handleRegenerate}
+                  disabled={isTyping}
+                  variant="outline"
+                  size="icon"
+                  className="h-[60px] w-[60px] shrink-0"
+                  title="Regenerate response"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </Button>
+              )}
+            </div>
+          </div>
         </div>
 
         <p className="text-xs text-muted-foreground text-center">
