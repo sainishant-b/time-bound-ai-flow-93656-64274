@@ -1,9 +1,16 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LogOut, Sparkles, Plus } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { Session, User } from "@supabase/supabase-js";
 import { PlanSelector } from "@/components/PlanSelector";
@@ -20,10 +27,12 @@ import {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [activeSession, setActiveSession] = useState<any>(null);
+  const [allActiveSessions, setAllActiveSessions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [tokenStats, setTokenStats] = useState<{ used: number; limit: number } | null>(null);
   const [showPlanSelector, setShowPlanSelector] = useState(false);
@@ -50,20 +59,27 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (user) {
-      loadActiveSession();
+      const sessionId = location.state?.sessionId;
+      loadActiveSession(sessionId);
+      loadAllActiveSessions();
     }
-  }, [user]);
+  }, [user, location.state?.sessionId]);
 
-  const loadActiveSession = async () => {
+  const loadActiveSession = async (sessionId?: string) => {
     try {
-      const { data, error } = await (supabase as any)
+      let query = (supabase as any)
         .from('user_sessions')
         .select('*')
         .eq('user_id', user?.id)
-        .eq('status', 'active')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+        .eq('status', 'active');
+
+      if (sessionId) {
+        query = query.eq('id', sessionId).single();
+      } else {
+        query = query.order('created_at', { ascending: false }).limit(1).single();
+      }
+
+      const { data, error } = await query;
 
       if (error && error.code !== 'PGRST116') {
         throw error;
@@ -90,6 +106,30 @@ export default function Dashboard() {
     } catch (error: any) {
       console.error('Error loading session:', error);
     }
+  };
+
+  const loadAllActiveSessions = async () => {
+    try {
+      const { data, error } = await (supabase as any)
+        .from('user_sessions')
+        .select('*')
+        .eq('user_id', user?.id)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      setAllActiveSessions(data || []);
+    } catch (error: any) {
+      console.error('Error loading all sessions:', error);
+    }
+  };
+
+  const handleSessionSwitch = async (sessionId: string) => {
+    if (sessionId === activeSession?.id) return;
+    
+    setTokenStats(null);
+    await loadActiveSession(sessionId);
   };
 
   const handleSignOut = async () => {
@@ -138,6 +178,20 @@ export default function Dashboard() {
           </div>
           
           <div className="flex items-center gap-4">
+            {allActiveSessions.length > 1 && activeSession && (
+              <Select value={activeSession.id} onValueChange={handleSessionSwitch}>
+                <SelectTrigger className="w-[200px] h-8 text-xs">
+                  <SelectValue placeholder="Select session" />
+                </SelectTrigger>
+                <SelectContent>
+                  {allActiveSessions.map((sess) => (
+                    <SelectItem key={sess.id} value={sess.id}>
+                      {sess.plan_id} - {sess.model_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <span className="text-xs text-muted-foreground hidden sm:inline">{user?.email}</span>
             <Button variant="ghost" size="sm" onClick={handleSignOut} className="h-8 px-3">
               <LogOut className="w-3 h-3 mr-2" />
@@ -175,6 +229,7 @@ export default function Dashboard() {
                     <PlanSelector 
                       onSessionStart={() => {
                         loadActiveSession();
+                        loadAllActiveSessions();
                         setShowPlanSelector(false);
                         toast({
                           title: "Session Queued",
@@ -200,7 +255,10 @@ export default function Dashboard() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <PlanSelector onSessionStart={loadActiveSession} />
+              <PlanSelector onSessionStart={() => {
+                loadActiveSession();
+                loadAllActiveSessions();
+              }} />
             </CardContent>
           </Card>
         )}

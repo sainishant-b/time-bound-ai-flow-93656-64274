@@ -137,7 +137,7 @@ export default function Home() {
                   <Card 
                     key={session.id}
                     className="border shadow-none hover:border-foreground/50 transition-all cursor-pointer group"
-                    onClick={() => navigate('/dashboard')}
+                    onClick={() => navigate('/dashboard', { state: { sessionId: session.id } })}
                   >
                     <CardHeader className="space-y-3">
                       <div className="flex items-start justify-between">
