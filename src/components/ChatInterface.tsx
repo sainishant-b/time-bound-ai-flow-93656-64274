@@ -117,8 +117,12 @@ export const ChatInterface = ({ session, onTokenUpdate }: ChatInterfaceProps) =>
         body: {
           messages: [...messages, userMessage],
           sessionId: session.id,
+          files: attachedFiles.length > 0 ? attachedFiles : undefined,
         },
       });
+
+      // Clear attached files after sending
+      setAttachedFiles([]);
 
       if (error) throw error;
 
