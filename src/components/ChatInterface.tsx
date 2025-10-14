@@ -5,10 +5,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { Send, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { FileAttachment } from "@/components/FileAttachment";
 
 interface Message {
   role: "user" | "assistant";
   content: string;
+  files?: Array<{
+    name: string;
+    type: string;
+    size: number;
+    content: string;
+  }>;
 }
 
 interface ChatInterfaceProps {
@@ -32,6 +39,12 @@ export const ChatInterface = ({ session, onTokenUpdate }: ChatInterfaceProps) =>
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [attachedFiles, setAttachedFiles] = useState<Array<{
+    name: string;
+    type: string;
+    size: number;
+    content: string;
+  }>>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -90,6 +103,7 @@ export const ChatInterface = ({ session, onTokenUpdate }: ChatInterfaceProps) =>
     const userMessage: Message = {
       role: "user",
       content: input,
+      files: attachedFiles.length > 0 ? attachedFiles : undefined,
     };
 
     // Create conversation on first message
@@ -103,6 +117,7 @@ export const ChatInterface = ({ session, onTokenUpdate }: ChatInterfaceProps) =>
 
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
+    setAttachedFiles([]);
     setIsTyping(true);
 
     // Save user message
@@ -115,6 +130,7 @@ export const ChatInterface = ({ session, onTokenUpdate }: ChatInterfaceProps) =>
         body: {
           messages: [...messages, userMessage],
           sessionId: session.id,
+          files: attachedFiles.length > 0 ? attachedFiles : undefined,
         },
       });
 
@@ -187,6 +203,16 @@ export const ChatInterface = ({ session, onTokenUpdate }: ChatInterfaceProps) =>
                 }`}
               >
                 <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                {message.files && message.files.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-current/20">
+                    <p className="text-xs opacity-70 mb-1">Attachments:</p>
+                    {message.files.map((file, idx) => (
+                      <p key={idx} className="text-xs opacity-80">
+                        📎 {file.name} ({Math.round(file.size / 1024)}KB)
+                      </p>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           ))}
@@ -204,23 +230,29 @@ export const ChatInterface = ({ session, onTokenUpdate }: ChatInterfaceProps) =>
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="flex gap-2">
-          <Textarea
-            placeholder="Type your message..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            className="min-h-[60px] max-h-[120px] resize-none"
+        <div className="space-y-2">
+          <FileAttachment 
+            onFilesChange={setAttachedFiles}
             disabled={isTyping}
           />
-          <Button
-            onClick={handleSend}
-            disabled={!input.trim() || isTyping}
-            size="icon"
-            className="h-[60px] w-[60px] shrink-0"
-          >
-            <Send className="w-4 h-4" />
-          </Button>
+          <div className="flex gap-2">
+            <Textarea
+              placeholder="Type your message..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyPress={handleKeyPress}
+              className="min-h-[60px] max-h-[120px] resize-none"
+              disabled={isTyping}
+            />
+            <Button
+              onClick={handleSend}
+              disabled={!input.trim() || isTyping}
+              size="icon"
+              className="h-[60px] w-[60px] shrink-0"
+            >
+              <Send className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
 
         <p className="text-xs text-muted-foreground text-center">

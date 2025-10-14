@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, sessionId } = await req.json();
+    const { messages, sessionId, files } = await req.json();
     
     const authHeader = req.headers.get("authorization");
     const token = authHeader?.replace("Bearer ", "");
@@ -85,6 +85,48 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
+    // Process messages with files for multimodal content
+    let processedMessages = [...messages];
+    
+    // If the last message has files, convert it to multimodal format
+    if (files && files.length > 0) {
+      const lastMessage = processedMessages[processedMessages.length - 1];
+      if (lastMessage.role === "user") {
+        const content: any[] = [
+          { type: "text", text: lastMessage.content }
+        ];
+        
+        // Add each file to the content array
+        for (const file of files) {
+          if (file.type.startsWith('image/')) {
+            // For images, use image_url format
+            content.push({
+              type: "image_url",
+              image_url: { url: file.content }
+            });
+          } else if (file.type.startsWith('text/') || file.type === 'text/csv') {
+            // For text files, append content as text
+            content.push({
+              type: "text",
+              text: `\n\n[File: ${file.name}]\n${file.content}`
+            });
+          } else {
+            // For other files (PDF, DOC, etc.), mention them
+            content.push({
+              type: "text",
+              text: `\n\n[File attached: ${file.name} (${file.type})]`
+            });
+          }
+        }
+        
+        // Replace the last message with multimodal content
+        processedMessages[processedMessages.length - 1] = {
+          role: "user",
+          content: content
+        };
+      }
+    }
+
     // Call Lovable AI
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -95,8 +137,8 @@ serve(async (req) => {
       body: JSON.stringify({
         model: session.model_name,
         messages: [
-          { role: "system", content: "You are a helpful AI assistant. Keep your responses clear and concise." },
-          ...messages,
+          { role: "system", content: "You are a helpful AI assistant. Keep your responses clear and concise. When files are attached, analyze them and provide relevant information." },
+          ...processedMessages,
         ],
       }),
     });
