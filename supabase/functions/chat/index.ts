@@ -104,17 +104,17 @@ serve(async (req) => {
               type: "image_url",
               image_url: { url: file.content }
             });
+          } else if (file.type === 'application/pdf') {
+            // Send PDF directly to AI model - it can read PDFs natively
+            content.push({
+              type: "image_url",
+              image_url: { url: file.content }
+            });
           } else if (file.type.startsWith('text/') || file.type === 'text/csv') {
             // For text files, append content as text
             content.push({
               type: "text",
               text: `\n\n[File: ${file.name}]\n${file.content}`
-            });
-          } else if (file.type === 'application/pdf') {
-            // Note: PDF text extraction not available in edge runtime
-            content.push({
-              type: "text",
-              text: `\n\n[PDF Document attached: ${file.name} - Please describe what you'd like to know about this document, or copy/paste the text content for analysis]`
             });
           } else {
             // For other files (DOC, etc.), mention them
