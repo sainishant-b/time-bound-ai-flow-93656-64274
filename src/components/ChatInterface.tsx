@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Send, Sparkles, Copy, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { FileUpload } from "@/components/chat/FileUpload";
+import { FileUpload, FileUploadHandle } from "@/components/chat/FileUpload";
 
 interface Message {
   role: "user" | "assistant";
@@ -34,6 +34,7 @@ export const ChatInterface = ({ session, onTokenUpdate }: ChatInterfaceProps) =>
   const [isTyping, setIsTyping] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [attachedFiles, setAttachedFiles] = useState<any[]>([]);
+  const fileUploadRef = useRef<FileUploadHandle>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -123,6 +124,9 @@ export const ChatInterface = ({ session, onTokenUpdate }: ChatInterfaceProps) =>
 
       // Clear attached files after sending
       setAttachedFiles([]);
+      if (fileUploadRef.current) {
+        fileUploadRef.current.clear();
+      }
 
       if (error) throw error;
 
@@ -280,7 +284,10 @@ export const ChatInterface = ({ session, onTokenUpdate }: ChatInterfaceProps) =>
         </div>
 
         <div className="space-y-2">
-          <FileUpload onFilesSelected={setAttachedFiles} />
+          <FileUpload 
+            onFilesSelected={setAttachedFiles}
+            ref={fileUploadRef}
+          />
           
           <div className="flex gap-2">
             <div className="flex-1 space-y-2">

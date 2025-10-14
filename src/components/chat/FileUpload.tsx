@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, forwardRef, useImperativeHandle } from "react";
 import { Button } from "@/components/ui/button";
 import { Paperclip, X, FileText, Image as ImageIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -7,7 +7,11 @@ interface FileUploadProps {
   onFilesSelected: (files: { name: string; type: string; content: string }[]) => void;
 }
 
-export const FileUpload = ({ onFilesSelected }: FileUploadProps) => {
+export interface FileUploadHandle {
+  clear: () => void;
+}
+
+export const FileUpload = forwardRef<FileUploadHandle, FileUploadProps>(({ onFilesSelected }, ref) => {
   const { toast } = useToast();
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 
@@ -40,11 +44,12 @@ export const FileUpload = ({ onFilesSelected }: FileUploadProps) => {
     });
 
     if (validFiles.length > 0) {
-      setSelectedFiles(prev => [...prev, ...validFiles]);
+      const newFiles = [...selectedFiles, ...validFiles];
+      setSelectedFiles(newFiles);
       
-      // Convert files to base64 for sending
+      // Convert all files to base64 for sending
       const processedFiles = await Promise.all(
-        validFiles.map(async (file) => {
+        newFiles.map(async (file) => {
           const base64 = await fileToBase64(file);
           return {
             name: file.name,
@@ -67,9 +72,36 @@ export const FileUpload = ({ onFilesSelected }: FileUploadProps) => {
     });
   };
 
-  const removeFile = (index: number) => {
-    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  const removeFile = async (index: number) => {
+    const newFiles = selectedFiles.filter((_, i) => i !== index);
+    setSelectedFiles(newFiles);
+    
+    // Update parent with remaining files
+    if (newFiles.length > 0) {
+      const processedFiles = await Promise.all(
+        newFiles.map(async (file) => {
+          const base64 = await fileToBase64(file);
+          return {
+            name: file.name,
+            type: file.type,
+            content: base64,
+          };
+        })
+      );
+      onFilesSelected(processedFiles);
+    } else {
+      onFilesSelected([]);
+    }
   };
+
+  const clearAllFiles = () => {
+    setSelectedFiles([]);
+    onFilesSelected([]);
+  };
+
+  useImperativeHandle(ref, () => ({
+    clear: clearAllFiles
+  }));
 
   return (
     <div className="space-y-2">
@@ -119,4 +151,6 @@ export const FileUpload = ({ onFilesSelected }: FileUploadProps) => {
       )}
     </div>
   );
-};
+});
+
+FileUpload.displayName = "FileUpload";
