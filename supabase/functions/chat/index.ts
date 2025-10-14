@@ -1,10 +1,33 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.74.0";
+// @ts-ignore
+import pdfParse from "https://esm.sh/pdf-parse@1.1.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+async function extractPdfText(base64Content: string): Promise<string> {
+  try {
+    // Remove data:application/pdf;base64, prefix if present
+    const base64Data = base64Content.split(',')[1] || base64Content;
+    
+    // Convert base64 to Uint8Array
+    const binaryString = atob(base64Data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    
+    // Parse PDF and extract text
+    const data = await pdfParse(bytes);
+    return data.text;
+  } catch (error) {
+    console.error('PDF extraction error:', error);
+    throw error;
+  }
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -110,8 +133,23 @@ serve(async (req) => {
               type: "text",
               text: `\n\n[File: ${file.name}]\n${file.content}`
             });
+          } else if (file.type === 'application/pdf') {
+            // Extract PDF text content
+            try {
+              const pdfText = await extractPdfText(file.content);
+              content.push({
+                type: "text",
+                text: `\n\n[PDF Document: ${file.name}]\n${pdfText}`
+              });
+            } catch (error) {
+              console.error('PDF parsing error for', file.name, ':', error);
+              content.push({
+                type: "text",
+                text: `\n\n[Unable to parse PDF: ${file.name}. Error: ${error instanceof Error ? error.message : 'Unknown error'}]`
+              });
+            }
           } else {
-            // For other files (PDF, DOC, etc.), mention them
+            // For other files (DOC, etc.), mention them
             content.push({
               type: "text",
               text: `\n\n[File attached: ${file.name} (${file.type})]`
@@ -137,7 +175,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: session.model_name,
         messages: [
-          { role: "system", content: "You are a helpful AI assistant. Keep your responses clear and concise. When files are attached, analyze them and provide relevant information." },
+          { role: "system", content: "You are a helpful AI assistant. Keep your responses clear and concise. When files are attached, thoroughly analyze them and provide relevant information. For documents like PDFs, extract key information, summarize content, and answer questions based on what's in the document." },
           ...processedMessages,
         ],
       }),
