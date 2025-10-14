@@ -105,10 +105,10 @@ serve(async (req) => {
               image_url: { url: file.content }
             });
           } else if (file.type === 'application/pdf') {
-            // Send PDF directly to AI model - it can read PDFs natively
+            // PDFs cannot be sent as image_url to the AI gateway; include a helpful note instead
             content.push({
-              type: "image_url",
-              image_url: { url: file.content }
+              type: "text",
+              text: `\n\n[PDF Document attached: ${file.name}]\nPDFs aren't parsed server-side in this app. Please paste relevant text or ask specific questions about sections.`
             });
           } else if (file.type.startsWith('text/') || file.type === 'text/csv') {
             // For text files, append content as text
