@@ -3,12 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { LogOut, Sparkles, MessageSquare, Trash2, ArrowLeft, ChevronRight, Star, Search, Copy } from "lucide-react";
+import { LogOut, Sparkles, MessageSquare, Trash2, ArrowLeft, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Input } from "@/components/ui/input";
-import { ExportButton } from "@/components/chat/ExportButton";
 
 interface Message {
   id: string;
@@ -23,7 +21,6 @@ interface Conversation {
   created_at: string;
   updated_at: string;
   message_count?: number;
-  pinned?: boolean;
 }
 
 export default function ChatHistory() {
@@ -35,7 +32,6 @@ export default function ChatHistory() {
   const [loading, setLoading] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [userEmail, setUserEmail] = useState<string>("");
-  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     checkAuth();
@@ -150,51 +146,6 @@ export default function ChatHistory() {
     }
   };
 
-  const togglePin = async (id: string, currentPinned: boolean, e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      const { error } = await (supabase as any)
-        .from('conversations')
-        .update({ pinned: !currentPinned })
-        .eq('id', id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: currentPinned ? "Conversation unpinned" : "Conversation pinned",
-      });
-
-      loadConversations();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  };
-
-  const copyMessage = (content: string) => {
-    navigator.clipboard.writeText(content);
-    toast({
-      title: "Copied",
-      description: "Message copied to clipboard",
-    });
-  };
-
-  const filteredConversations = conversations
-    .filter(conv => 
-      conv.title.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-    .sort((a, b) => {
-      // Pinned first
-      if (a.pinned && !b.pinned) return -1;
-      if (!a.pinned && b.pinned) return 1;
-      // Then by updated_at
-      return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
-    });
-
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-50 w-full border-b bg-background">
@@ -233,21 +184,9 @@ export default function ChatHistory() {
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Conversations List */}
           <div className="lg:col-span-1 space-y-4">
-            <div className="space-y-3">
-              <div className="space-y-2">
-                <h1 className="text-2xl font-bold tracking-tight">Chat History</h1>
-                <p className="text-sm text-muted-foreground">Your conversations</p>
-              </div>
-              
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search conversations..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 h-9"
-                />
-              </div>
+            <div className="space-y-2">
+              <h1 className="text-2xl font-bold tracking-tight">Chat History</h1>
+              <p className="text-sm text-muted-foreground">Your conversations</p>
             </div>
 
             {loading ? (
@@ -267,9 +206,9 @@ export default function ChatHistory() {
                 </CardContent>
               </Card>
             ) : (
-              <ScrollArea className="h-[calc(100vh-280px)]">
+              <ScrollArea className="h-[calc(100vh-240px)]">
                 <div className="space-y-2 pr-4">
-                  {filteredConversations.map((conversation) => (
+                  {conversations.map((conversation) => (
                     <Card 
                       key={conversation.id}
                       className={`group border shadow-none cursor-pointer transition-all hover:border-foreground/50 animate-fade-up ${
@@ -286,16 +225,6 @@ export default function ChatHistory() {
                             </CardDescription>
                           </div>
                           <div className="flex items-center gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => togglePin(conversation.id, !!conversation.pinned, e)}
-                              className={`h-7 w-7 p-0 transition-opacity ${
-                                conversation.pinned ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                              }`}
-                            >
-                              <Star className={`w-3.5 h-3.5 ${conversation.pinned ? 'fill-current' : ''}`} />
-                            </Button>
                             <Button
                               variant="ghost"
                               size="sm"
@@ -337,7 +266,6 @@ export default function ChatHistory() {
                         </CardDescription>
                       </div>
                     </div>
-                    <ExportButton title={selectedConversation.title} messages={messages} />
                   </div>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -351,10 +279,10 @@ export default function ChatHistory() {
                         {messages.map((message) => (
                           <div
                             key={message.id}
-                            className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-up group`}
+                            className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-up`}
                           >
                             <div
-                              className={`max-w-[80%] rounded-lg px-4 py-3 relative ${
+                              className={`max-w-[80%] rounded-lg px-4 py-3 ${
                                 message.role === 'user'
                                   ? 'bg-foreground text-background'
                                   : 'bg-secondary text-foreground border border-border'
@@ -364,14 +292,6 @@ export default function ChatHistory() {
                               <p className="text-xs mt-2 opacity-60">
                                 {format(new Date(message.created_at), 'h:mm a')}
                               </p>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => copyMessage(message.content)}
-                                className="absolute top-1 right-1 h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                              >
-                                <Copy className="w-3 h-3" />
-                              </Button>
                             </div>
                           </div>
                         ))}

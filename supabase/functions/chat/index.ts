@@ -12,7 +12,7 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, sessionId, files } = await req.json();
+    const { messages, sessionId } = await req.json();
     
     const authHeader = req.headers.get("authorization");
     const token = authHeader?.replace("Bearer ", "");
@@ -85,35 +85,6 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
-    // Process messages with files for multimodal input
-    let processedMessages = [...messages];
-    
-    // If files are attached, modify the last user message to include them
-    if (files && files.length > 0) {
-      const lastMessage = processedMessages[processedMessages.length - 1];
-      if (lastMessage.role === "user") {
-        const content: any[] = [
-          { type: "text", text: lastMessage.content }
-        ];
-        
-        // Add each file as an image_url in the content array
-        for (const file of files) {
-          if (file.type.startsWith('image/')) {
-            content.push({
-              type: "image_url",
-              image_url: { url: file.content }
-            });
-          }
-        }
-        
-        // Replace the last message with multimodal content
-        processedMessages[processedMessages.length - 1] = {
-          role: "user",
-          content: content
-        };
-      }
-    }
-
     // Call Lovable AI
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -125,7 +96,7 @@ serve(async (req) => {
         model: session.model_name,
         messages: [
           { role: "system", content: "You are a helpful AI assistant. Keep your responses clear and concise." },
-          ...processedMessages,
+          ...messages,
         ],
       }),
     });
