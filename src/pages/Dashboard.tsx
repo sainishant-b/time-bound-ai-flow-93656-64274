@@ -171,8 +171,13 @@ export default function Dashboard() {
               <Button variant="ghost" size="sm" className="h-8 px-3 bg-secondary">
                 Dashboard
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => navigate('/chat-history')} className="h-8 px-3">
-                Chat History
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => navigate('/chat-history')} 
+                className="h-8 px-3 hover:bg-primary/10 transition-colors"
+              >
+                💬 Chat History
               </Button>
             </nav>
           </div>
