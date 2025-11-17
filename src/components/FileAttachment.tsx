@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Paperclip, X, File, Image as ImageIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import * as pdfjsLib from 'pdfjs-dist';
+import mammoth from 'mammoth';
 
 // Configure PDF.js worker - use local worker file
 pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
@@ -26,6 +27,8 @@ const ACCEPTED_TYPES = {
   'text/plain': '.txt',
   'application/msword': '.doc',
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': '.pptx',
+  'application/vnd.ms-powerpoint': '.ppt',
   'image/jpeg': '.jpg,.jpeg',
   'image/png': '.png',
   'image/gif': '.gif',
@@ -66,6 +69,17 @@ export const FileAttachment = ({ onFilesChange, disabled }: FileAttachmentProps)
     } catch (error) {
       console.error('PDF extraction error:', error);
       throw new Error('Failed to extract PDF text');
+    }
+  };
+
+  const extractDocxText = async (file: File): Promise<string> => {
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const result = await mammoth.extractRawText({ arrayBuffer });
+      return result.value.trim() || "[Word document appears to be empty]";
+    } catch (error) {
+      console.error('DOCX extraction error:', error);
+      throw new Error('Failed to extract Word document text');
     }
   };
 
@@ -127,14 +141,29 @@ export const FileAttachment = ({ onFilesChange, disabled }: FileAttachmentProps)
       try {
         let content: string;
 
-        // For PDFs, extract text content
+        // Extract text from different document types
         if (file.type === 'application/pdf') {
           toast({
             title: "Processing PDF",
             description: `Extracting text from ${file.name}...`,
           });
           content = await extractPdfText(file);
+        } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+          toast({
+            title: "Processing Word document",
+            description: `Extracting text from ${file.name}...`,
+          });
+          content = await extractDocxText(file);
+        } else if (file.type.includes('powerpoint') || file.type.includes('presentation')) {
+          // PowerPoint files - read as base64 for now
+          // Client-side PPT parsing is limited, but we'll send it for AI to attempt to understand
+          toast({
+            title: "Processing PowerPoint",
+            description: `Preparing ${file.name} for AI analysis...`,
+          });
+          content = await readFileContent(file);
         } else {
+          // Images, text files, and other formats
           content = await readFileContent(file);
         }
 
@@ -145,9 +174,9 @@ export const FileAttachment = ({ onFilesChange, disabled }: FileAttachmentProps)
           content,
         });
 
-        if (file.type === 'application/pdf') {
+        if (file.type === 'application/pdf' || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
           toast({
-            title: "PDF processed",
+            title: "Document processed",
             description: `Successfully extracted text from ${file.name}.`,
           });
         }

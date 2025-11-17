@@ -123,8 +123,16 @@ serve(async (req) => {
             console.log('✅ PDF text content received from client, length:', file.content.length);
             console.log('PDF preview:', file.content.substring(0, 300));
             messageText += `\n\n[PDF Document: ${file.name}]\n\n${file.content}`;
+          } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+            // DOCX content is already extracted text from client-side parsing
+            console.log('✅ DOCX text content received from client, length:', file.content.length);
+            messageText += `\n\n[Word Document: ${file.name}]\n\n${file.content}`;
+          } else if (file.type.includes('powerpoint') || file.type.includes('presentation')) {
+            // PowerPoint files - currently sent as base64
+            console.log('PowerPoint file received:', file.name, 'type:', file.type);
+            messageText += `\n\n[PowerPoint Presentation: ${file.name}]\n\nNote: PowerPoint content extraction is limited. Please describe what you'd like to know about this presentation.`;
           } else {
-            // For other files (DOC, etc.), mention them
+            // For other files, mention them
             messageText += `\n\n[File attached: ${file.name} (${file.type})]`;
           }
         }
@@ -161,7 +169,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: session.model_name,
         messages: [
-          { role: "system", content: "You are a helpful AI assistant. Keep your responses clear and concise. When files are attached, thoroughly analyze them and provide relevant information. For documents like PDFs, extract key information, summarize content, and answer questions based on what's in the document." },
+          { role: "system", content: "You are a helpful AI assistant. Keep your responses clear and concise. When files are attached, thoroughly analyze them and provide relevant information. For documents like PDFs and Word files, extract key information, summarize content, and answer questions based on what's in the document. For images, describe what you see and provide analysis. For PowerPoint files, note that content extraction may be limited." },
           ...processedMessages,
         ],
       }),
