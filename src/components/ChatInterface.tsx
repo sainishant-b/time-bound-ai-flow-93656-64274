@@ -45,6 +45,7 @@ export const ChatInterface = ({ session, onTokenUpdate }: ChatInterfaceProps) =>
     size: number;
     content: string;
   }>>([]);
+  const [fileAttachmentKey, setFileAttachmentKey] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -118,6 +119,7 @@ export const ChatInterface = ({ session, onTokenUpdate }: ChatInterfaceProps) =>
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setAttachedFiles([]);
+    setFileAttachmentKey(prev => prev + 1); // Reset file attachment component
     setIsTyping(true);
 
     // Save user message
@@ -241,6 +243,7 @@ export const ChatInterface = ({ session, onTokenUpdate }: ChatInterfaceProps) =>
 
         <div className="space-y-2">
           <FileAttachment 
+            key={fileAttachmentKey}
             onFilesChange={setAttachedFiles}
             disabled={isTyping}
           />
