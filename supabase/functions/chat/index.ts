@@ -117,51 +117,54 @@ serve(async (req) => {
       console.log('File types:', files.map(f => ({ name: f.name, type: f.type, size: f.size })));
     }
     
-    // If the last message has files, convert it to multimodal format
+    // If the last message has files, append file content to the message
     if (files && files.length > 0) {
       const lastMessage = processedMessages[processedMessages.length - 1];
       if (lastMessage.role === "user") {
-        const content: any[] = [
-          { type: "text", text: lastMessage.content }
-        ];
+        let messageText = lastMessage.content;
+        const imageFiles: any[] = [];
         
-        // Add each file to the content array
+        // Process each file
         for (const file of files) {
           if (file.type.startsWith('image/')) {
-            // For images, use image_url format
-            content.push({
+            // Collect images for multimodal format
+            imageFiles.push({
               type: "image_url",
               image_url: { url: file.content }
             });
           } else if (file.type.startsWith('text/') || file.type === 'text/csv') {
             // For text files, append content as text
-            content.push({
-              type: "text",
-              text: `\n\n[File: ${file.name}]\n${file.content}`
-            });
+            messageText += `\n\n[File: ${file.name}]\n${file.content}`;
           } else if (file.type === 'application/pdf') {
             // PDF content is already extracted text from client-side parsing
-            console.log('PDF text content received from client:', file.content.substring(0, 200));
-            content.push({
-              type: "text",
-              text: `\n\n[PDF Document: ${file.name}]\n${file.content}`
-            });
+            console.log('✅ PDF text content received from client, length:', file.content.length);
+            console.log('PDF preview:', file.content.substring(0, 300));
+            messageText += `\n\n[PDF Document: ${file.name}]\n\n${file.content}`;
           } else {
             // For other files (DOC, etc.), mention them
-            content.push({
-              type: "text",
-              text: `\n\n[File attached: ${file.name} (${file.type})]`
-            });
+            messageText += `\n\n[File attached: ${file.name} (${file.type})]`;
           }
         }
         
-        // Replace the last message with multimodal content
-        processedMessages[processedMessages.length - 1] = {
-          role: "user",
-          content: content
-        };
-        
-        console.log('Processed message with files:', JSON.stringify(content, null, 2));
+        // If there are images, use multimodal format, otherwise use simple text
+        if (imageFiles.length > 0) {
+          const content: unknown[] = [
+            { type: "text", text: messageText },
+            ...imageFiles
+          ];
+          processedMessages[processedMessages.length - 1] = {
+            role: "user",
+            content: content
+          };
+          console.log('Processed message with images (multimodal)');
+        } else {
+          // For text-only content (including PDFs), use simple string format
+          processedMessages[processedMessages.length - 1] = {
+            role: "user",
+            content: messageText
+          };
+          console.log('Processed message with text content, length:', messageText.length);
+        }
       }
     }
 
