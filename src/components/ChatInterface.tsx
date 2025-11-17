@@ -126,6 +126,7 @@ export const ChatInterface = ({ session, onTokenUpdate }: ChatInterfaceProps) =>
     }
 
     try {
+      console.log('Sending files to edge function:', attachedFiles);
       const { data, error } = await supabase.functions.invoke("chat", {
         body: {
           messages: [...messages, userMessage],

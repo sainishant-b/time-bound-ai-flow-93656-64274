@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.74.0";
 // @ts-ignore
-import pdfParse from "https://esm.sh/pdf-parse@1.1.1";
+import * as pdfjsLib from "https://esm.sh/pdfjs-dist@3.11.174/build/pdf.min.js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,22 +10,47 @@ const corsHeaders = {
 
 async function extractPdfText(base64Content: string): Promise<string> {
   try {
-    // Remove data:application/pdf;base64, prefix if present
-    const base64Data = base64Content.split(',')[1] || base64Content;
-    
+    console.log('Starting PDF text extraction...');
+
+    // Remove data URL prefix if present
+    const base64Data = base64Content.includes(',')
+      ? base64Content.split(',')[1]
+      : base64Content;
+
     // Convert base64 to Uint8Array
     const binaryString = atob(base64Data);
     const bytes = new Uint8Array(binaryString.length);
     for (let i = 0; i < binaryString.length; i++) {
       bytes[i] = binaryString.charCodeAt(i);
     }
-    
-    // Parse PDF and extract text
-    const data = await pdfParse(bytes);
-    return data.text;
+
+    console.log('PDF bytes length:', bytes.length);
+
+    // Load the PDF document
+    const loadingTask = pdfjsLib.getDocument({ data: bytes });
+    const pdf = await loadingTask.promise;
+
+    console.log('PDF loaded, pages:', pdf.numPages);
+
+    let fullText = '';
+
+    // Extract text from each page
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      const textContent = await page.getTextContent();
+      const pageText = textContent.items
+        .map((item: any) => item.str)
+        .join(' ');
+
+      fullText += `\n--- Page ${pageNum} ---\n${pageText}\n`;
+    }
+
+    console.log('PDF text extraction successful, length:', fullText.length);
+    return fullText.trim() || "[PDF document appears to be empty or contains only images]";
+
   } catch (error) {
     console.error('PDF extraction error:', error);
-    throw error;
+    return `[Error processing PDF file: ${error instanceof Error ? error.message : 'Unknown error'}]`;
   }
 }
 
@@ -111,6 +136,11 @@ serve(async (req) => {
     // Process messages with files for multimodal content
     let processedMessages = [...messages];
     
+    console.log('Files received:', files ? files.length : 0);
+    if (files) {
+      console.log('File types:', files.map(f => ({ name: f.name, type: f.type, size: f.size })));
+    }
+    
     // If the last message has files, convert it to multimodal format
     if (files && files.length > 0) {
       const lastMessage = processedMessages[processedMessages.length - 1];
@@ -162,6 +192,8 @@ serve(async (req) => {
           role: "user",
           content: content
         };
+        
+        console.log('Processed message with files:', JSON.stringify(content, null, 2));
       }
     }
 
