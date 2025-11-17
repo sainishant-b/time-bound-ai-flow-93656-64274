@@ -186,7 +186,9 @@ export default function ChatHistory() {
           <div className="lg:col-span-1 space-y-4">
             <div className="space-y-2">
               <h1 className="text-2xl font-bold tracking-tight">Chat History</h1>
-              <p className="text-sm text-muted-foreground">Your conversations</p>
+              <p className="text-sm text-muted-foreground">
+                View all your chat sessions. Each session contains your complete conversation.
+              </p>
             </div>
 
             {loading ? (
@@ -197,8 +199,11 @@ export default function ChatHistory() {
               <Card className="border shadow-none">
                 <CardContent className="flex flex-col items-center justify-center py-12">
                   <MessageSquare className="w-12 h-12 text-muted-foreground mb-4" />
-                  <p className="text-sm text-muted-foreground mb-4">
-                    No conversations yet
+                  <p className="text-sm text-muted-foreground mb-2 text-center">
+                    No chat sessions yet
+                  </p>
+                  <p className="text-xs text-muted-foreground mb-4 text-center px-4">
+                    Start a conversation in Dashboard. Each chat session will be saved here with all messages.
                   </p>
                   <Button onClick={() => navigate('/dashboard')} size="sm">
                     Go to Dashboard
@@ -221,7 +226,7 @@ export default function ChatHistory() {
                           <div className="space-y-1 flex-1 min-w-0">
                             <CardTitle className="text-sm font-medium truncate">{conversation.title}</CardTitle>
                             <CardDescription className="text-xs">
-                              {conversation.message_count} messages • {format(new Date(conversation.updated_at), 'MMM d')}
+                              Session: {conversation.message_count} messages • {format(new Date(conversation.updated_at), 'MMM d, yyyy')}
                             </CardDescription>
                           </div>
                           <div className="flex items-center gap-1">
@@ -262,7 +267,7 @@ export default function ChatHistory() {
                       <div>
                         <CardTitle className="text-lg font-light">{selectedConversation.title}</CardTitle>
                         <CardDescription className="text-xs">
-                          Started {format(new Date(selectedConversation.created_at), 'MMM d, yyyy • h:mm a')}
+                          Chat Session • Started {format(new Date(selectedConversation.created_at), 'MMM d, yyyy • h:mm a')} • {messages.length} messages
                         </CardDescription>
                       </div>
                     </div>
@@ -304,9 +309,9 @@ export default function ChatHistory() {
               <Card className="border shadow-none h-[calc(100vh-180px)]">
                 <CardContent className="flex flex-col items-center justify-center h-full">
                   <MessageSquare className="w-16 h-16 text-muted-foreground mb-4 opacity-50" />
-                  <p className="text-lg font-medium mb-2">Select a conversation</p>
-                  <p className="text-sm text-muted-foreground">
-                    Choose a conversation from the list to view messages
+                  <p className="text-lg font-medium mb-2">Select a chat session</p>
+                  <p className="text-sm text-muted-foreground text-center px-4">
+                    Choose a session from the list to view all messages in that conversation
                   </p>
                 </CardContent>
               </Card>
