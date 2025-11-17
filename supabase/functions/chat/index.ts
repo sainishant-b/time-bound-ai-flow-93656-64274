@@ -6,6 +6,13 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+interface FileAttachment {
+  name: string;
+  type: string;
+  size: number;
+  content: string;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -90,7 +97,7 @@ serve(async (req) => {
     
     console.log('Files received:', files ? files.length : 0);
     if (files) {
-      console.log('File types:', files.map(f => ({ name: f.name, type: f.type, size: f.size })));
+      console.log('File types:', files.map((f: FileAttachment) => ({ name: f.name, type: f.type, size: f.size })));
     }
     
     // If the last message has files, append file content to the message
