@@ -54,6 +54,8 @@ export const ChatInterface = ({ session, onTokenUpdate }: ChatInterfaceProps) =>
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
 
+        console.log('Loading conversation for session:', session.id, 'Model:', session.model_name);
+
         const { data: existing } = await (supabase as any)
           .from('conversations')
           .select('*')
@@ -61,6 +63,8 @@ export const ChatInterface = ({ session, onTokenUpdate }: ChatInterfaceProps) =>
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
+
+        console.log('Found existing conversation:', existing);
 
         if (existing) {
           setConversationId(existing.id);
@@ -70,12 +74,15 @@ export const ChatInterface = ({ session, onTokenUpdate }: ChatInterfaceProps) =>
             .eq('conversation_id', existing.id)
             .order('created_at', { ascending: true });
 
+          console.log('Loaded messages for conversation:', existingMessages?.length);
+
           if (existingMessages && existingMessages.length > 0) {
             setMessages(existingMessages.map((m: any) => ({ role: m.role, content: m.content })));
           } else {
             setMessages([{ role: 'assistant', content: `Hello! I'm ${session.model_name.replace(/-/g, ' ')}. How can I help you today?` }]);
           }
         } else {
+          setConversationId(null);
           setMessages([{ role: 'assistant', content: `Hello! I'm ${session.model_name.replace(/-/g, ' ')}. How can I help you today?` }]);
         }
       } catch (e) {
@@ -84,12 +91,14 @@ export const ChatInterface = ({ session, onTokenUpdate }: ChatInterfaceProps) =>
       }
     };
     init();
-  }, [session.id]);
+  }, [session.id, session.model_name]);
 
   const createConversation = async (firstMessage: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
+
+      console.log('Creating/finding conversation for session:', session.id);
 
       // Reuse existing conversation for this session if present
       const { data: existing } = await (supabase as any)
@@ -100,10 +109,14 @@ export const ChatInterface = ({ session, onTokenUpdate }: ChatInterfaceProps) =>
         .limit(1)
         .maybeSingle();
 
-      if (existing) return existing.id;
+      if (existing) {
+        console.log('Reusing existing conversation:', existing.id);
+        return existing.id;
+      }
 
       const title = firstMessage.slice(0, 50) + (firstMessage.length > 50 ? '...' : '');
       
+      console.log('Creating NEW conversation for session:', session.id);
       const { data, error } = await (supabase as any)
         .from('conversations')
         .insert({
@@ -115,6 +128,7 @@ export const ChatInterface = ({ session, onTokenUpdate }: ChatInterfaceProps) =>
         .single();
 
       if (error) throw error;
+      console.log('Created conversation:', data.id, 'for session:', session.id);
       return data.id;
     } catch (error) {
       console.error('Error creating conversation:', error);
