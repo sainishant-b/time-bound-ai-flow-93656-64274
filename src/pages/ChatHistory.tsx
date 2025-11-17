@@ -21,6 +21,11 @@ interface Conversation {
   created_at: string;
   updated_at: string;
   message_count?: number;
+  session_id: string;
+  user_sessions?: {
+    model_name: string;
+    plan_id: string;
+  };
 }
 
 export default function ChatHistory() {
@@ -53,7 +58,8 @@ export default function ChatHistory() {
         .from('conversations')
         .select(`
           *,
-          chat_messages(count)
+          chat_messages(count),
+          user_sessions(model_name, plan_id)
         `)
         .order('updated_at', { ascending: false });
 
@@ -64,6 +70,7 @@ export default function ChatHistory() {
         message_count: conv.chat_messages?.[0]?.count || 0
       })) || [];
 
+      console.log('Loaded conversations:', conversationsWithCount);
       setConversations(conversationsWithCount);
     } catch (error: any) {
       toast({
@@ -225,8 +232,13 @@ export default function ChatHistory() {
                         <div className="flex items-start justify-between gap-2">
                           <div className="space-y-1 flex-1 min-w-0">
                             <CardTitle className="text-sm font-medium truncate">{conversation.title}</CardTitle>
-                            <CardDescription className="text-xs">
-                              Session: {conversation.message_count} messages • {format(new Date(conversation.updated_at), 'MMM d, yyyy')}
+                            <CardDescription className="text-xs space-y-0.5">
+                              <div>Session: {conversation.message_count} messages • {format(new Date(conversation.updated_at), 'MMM d, yyyy')}</div>
+                              {conversation.user_sessions && (
+                                <div className="text-primary/80">
+                                  {conversation.user_sessions.plan_id} • {conversation.user_sessions.model_name.replace('google/', '')}
+                                </div>
+                              )}
                             </CardDescription>
                           </div>
                           <div className="flex items-center gap-1">
