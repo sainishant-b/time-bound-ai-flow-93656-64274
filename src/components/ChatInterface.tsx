@@ -30,12 +30,7 @@ interface Conversation {
 
 export const ChatInterface = ({ session, onTokenUpdate }: ChatInterfaceProps) => {
   const { toast } = useToast();
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      role: "assistant",
-      content: `Hello! I'm ${session.model_name.replace(/-/g, ' ')}. How can I help you today?`,
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -52,10 +47,60 @@ export const ChatInterface = ({ session, onTokenUpdate }: ChatInterfaceProps) =>
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Load existing conversation and messages for this session on mount
+  useEffect(() => {
+    const init = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data: existing } = await (supabase as any)
+          .from('conversations')
+          .select('*')
+          .eq('session_id', session.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (existing) {
+          setConversationId(existing.id);
+          const { data: existingMessages } = await (supabase as any)
+            .from('chat_messages')
+            .select('*')
+            .eq('conversation_id', existing.id)
+            .order('created_at', { ascending: true });
+
+          if (existingMessages && existingMessages.length > 0) {
+            setMessages(existingMessages.map((m: any) => ({ role: m.role, content: m.content })));
+          } else {
+            setMessages([{ role: 'assistant', content: `Hello! I'm ${session.model_name.replace(/-/g, ' ')}. How can I help you today?` }]);
+          }
+        } else {
+          setMessages([{ role: 'assistant', content: `Hello! I'm ${session.model_name.replace(/-/g, ' ')}. How can I help you today?` }]);
+        }
+      } catch (e) {
+        console.error('Failed to load existing conversation', e);
+        setMessages([{ role: 'assistant', content: `Hello! I'm ${session.model_name.replace(/-/g, ' ')}. How can I help you today?` }]);
+      }
+    };
+    init();
+  }, [session.id]);
+
   const createConversation = async (firstMessage: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
+
+      // Reuse existing conversation for this session if present
+      const { data: existing } = await (supabase as any)
+        .from('conversations')
+        .select('*')
+        .eq('session_id', session.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (existing) return existing.id;
 
       const title = firstMessage.slice(0, 50) + (firstMessage.length > 50 ? '...' : '');
       
@@ -93,6 +138,12 @@ export const ChatInterface = ({ session, onTokenUpdate }: ChatInterfaceProps) =>
         console.error('Error saving message:', error);
         throw error;
       }
+
+      // Bump conversation updated_at for ordering
+      await (supabase as any)
+        .from('conversations')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', conversationId);
     } catch (error) {
       console.error('Error saving message:', error);
     }
