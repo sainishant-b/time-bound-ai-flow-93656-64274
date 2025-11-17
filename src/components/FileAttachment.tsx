@@ -2,6 +2,10 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Paperclip, X, File, Image as ImageIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Configure PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
 
 interface AttachedFile {
   name: string;
@@ -41,17 +45,41 @@ export const FileAttachment = ({ onFilesChange, disabled }: FileAttachmentProps)
     return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   };
 
+  const extractPdfText = async (file: File): Promise<string> => {
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+      let fullText = '';
+
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const textContent = await page.getTextContent();
+        const pageText = textContent.items
+          .map((item: any) => item.str)
+          .join(' ');
+
+        fullText += `\n--- Page ${pageNum} ---\n${pageText}\n`;
+      }
+
+      return fullText.trim() || "[PDF document appears to be empty or contains only images]";
+    } catch (error) {
+      console.error('PDF extraction error:', error);
+      throw new Error('Failed to extract PDF text');
+    }
+  };
+
   const readFileContent = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      
+
       reader.onload = (e) => {
         const result = e.target?.result as string;
         resolve(result);
       };
-      
+
       reader.onerror = () => reject(new Error('Failed to read file'));
-      
+
       // For text-based files, read as text. For others, read as base64
       if (file.type.startsWith('text/') || file.type === 'text/csv') {
         reader.readAsText(file);
@@ -97,17 +125,36 @@ export const FileAttachment = ({ onFilesChange, disabled }: FileAttachmentProps)
       }
 
       try {
-        const content = await readFileContent(file);
+        let content: string;
+
+        // For PDFs, extract text content
+        if (file.type === 'application/pdf') {
+          toast({
+            title: "Processing PDF",
+            description: `Extracting text from ${file.name}...`,
+          });
+          content = await extractPdfText(file);
+        } else {
+          content = await readFileContent(file);
+        }
+
         validFiles.push({
           name: file.name,
           type: file.type,
           size: file.size,
           content,
         });
+
+        if (file.type === 'application/pdf') {
+          toast({
+            title: "PDF processed",
+            description: `Successfully extracted text from ${file.name}.`,
+          });
+        }
       } catch (error) {
         toast({
           title: "Error reading file",
-          description: `Failed to read ${file.name}.`,
+          description: `Failed to read ${file.name}. ${error instanceof Error ? error.message : ''}`,
           variant: "destructive",
         });
       }

@@ -1,56 +1,32 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.74.0";
-// @ts-ignore
-import * as pdfjsLib from "https://esm.sh/pdfjs-dist@3.11.174/build/pdf.min.js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-async function extractPdfText(base64Content: string): Promise<string> {
+async function extractBasicPdfInfo(base64Content: string): Promise<string> {
   try {
-    console.log('Starting PDF text extraction...');
+    console.log('Processing PDF document...');
 
     // Remove data URL prefix if present
     const base64Data = base64Content.includes(',')
       ? base64Content.split(',')[1]
       : base64Content;
 
-    // Convert base64 to Uint8Array
+    // Convert to bytes to get basic info
     const binaryString = atob(base64Data);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
+    const sizeInKB = Math.round(binaryString.length / 1024);
 
-    console.log('PDF bytes length:', bytes.length);
+    console.log(`PDF size: ${sizeInKB}KB`);
 
-    // Load the PDF document
-    const loadingTask = pdfjsLib.getDocument({ data: bytes });
-    const pdf = await loadingTask.promise;
-
-    console.log('PDF loaded, pages:', pdf.numPages);
-
-    let fullText = '';
-
-    // Extract text from each page
-    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-      const page = await pdf.getPage(pageNum);
-      const textContent = await page.getTextContent();
-      const pageText = textContent.items
-        .map((item: any) => item.str)
-        .join(' ');
-
-      fullText += `\n--- Page ${pageNum} ---\n${pageText}\n`;
-    }
-
-    console.log('PDF text extraction successful, length:', fullText.length);
-    return fullText.trim() || "[PDF document appears to be empty or contains only images]";
+    // Return a message indicating PDF is attached
+    return `[PDF Document Information]\nSize: ${sizeInKB}KB\n\nNote: Due to the limitations of this chat environment, I cannot directly access or process the content of the attached PDF document. PDFs are not parsed server-side in this application.\n\nTo help you with the PDF, please:\n**paste the relevant text from the document** into our chat, or tell me:\n**What specific information are you looking for?**\n**What questions do you have about the document?**\n**Are there any particular sections you'd like me to analyze?**\n\nOnce you provide the text, I'll be happy to assist you!`;
 
   } catch (error) {
-    console.error('PDF extraction error:', error);
-    return `[Error processing PDF file: ${error instanceof Error ? error.message : 'Unknown error'}]`;
+    console.error('PDF processing error:', error);
+    return `[PDF document attached but cannot be processed. Please paste the relevant content from the PDF that you'd like help with]`;
   }
 }
 
@@ -164,20 +140,12 @@ serve(async (req) => {
               text: `\n\n[File: ${file.name}]\n${file.content}`
             });
           } else if (file.type === 'application/pdf') {
-            // Extract PDF text content
-            try {
-              const pdfText = await extractPdfText(file.content);
-              content.push({
-                type: "text",
-                text: `\n\n[PDF Document: ${file.name}]\n${pdfText}`
-              });
-            } catch (error) {
-              console.error('PDF parsing error for', file.name, ':', error);
-              content.push({
-                type: "text",
-                text: `\n\n[Unable to parse PDF: ${file.name}. Error: ${error instanceof Error ? error.message : 'Unknown error'}]`
-              });
-            }
+            // PDF content is already extracted text from client-side parsing
+            console.log('PDF text content received from client:', file.content.substring(0, 200));
+            content.push({
+              type: "text",
+              text: `\n\n[PDF Document: ${file.name}]\n${file.content}`
+            });
           } else {
             // For other files (DOC, etc.), mention them
             content.push({
