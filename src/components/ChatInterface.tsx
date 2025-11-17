@@ -114,8 +114,8 @@ export const ChatInterface = ({ session, onTokenUpdate }: ChatInterfaceProps) =>
       if (currentConversationId) {
         setConversationId(currentConversationId);
         toast({
-          title: "Conversation saved",
-          description: "Your chat is being saved automatically. View it anytime in Chat History.",
+          title: "Chat session started",
+          description: "All messages in this session will be saved together. Find them later in Chat History.",
         });
       }
     }
@@ -203,7 +203,7 @@ export const ChatInterface = ({ session, onTokenUpdate }: ChatInterfaceProps) =>
           Chat with {session.model_name.replace(/google\/|gemini-|-/g, ' ')}
         </CardTitle>
         <p className="text-xs text-muted-foreground">
-          💾 Your conversations are automatically saved and can be viewed in Chat History
+          💾 This entire chat session is automatically saved. View all your sessions in Chat History.
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
