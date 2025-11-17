@@ -6,30 +6,6 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-async function extractBasicPdfInfo(base64Content: string): Promise<string> {
-  try {
-    console.log('Processing PDF document...');
-
-    // Remove data URL prefix if present
-    const base64Data = base64Content.includes(',')
-      ? base64Content.split(',')[1]
-      : base64Content;
-
-    // Convert to bytes to get basic info
-    const binaryString = atob(base64Data);
-    const sizeInKB = Math.round(binaryString.length / 1024);
-
-    console.log(`PDF size: ${sizeInKB}KB`);
-
-    // Return a message indicating PDF is attached
-    return `[PDF Document Information]\nSize: ${sizeInKB}KB\n\nNote: Due to the limitations of this chat environment, I cannot directly access or process the content of the attached PDF document. PDFs are not parsed server-side in this application.\n\nTo help you with the PDF, please:\n**paste the relevant text from the document** into our chat, or tell me:\n**What specific information are you looking for?**\n**What questions do you have about the document?**\n**Are there any particular sections you'd like me to analyze?**\n\nOnce you provide the text, I'll be happy to assist you!`;
-
-  } catch (error) {
-    console.error('PDF processing error:', error);
-    return `[PDF document attached but cannot be processed. Please paste the relevant content from the PDF that you'd like help with]`;
-  }
-}
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -148,7 +124,7 @@ serve(async (req) => {
         
         // If there are images, use multimodal format, otherwise use simple text
         if (imageFiles.length > 0) {
-          const content: unknown[] = [
+          const content: any[] = [
             { type: "text", text: messageText },
             ...imageFiles
           ];
