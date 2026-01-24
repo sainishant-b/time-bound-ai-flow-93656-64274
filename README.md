@@ -1,3 +1,42 @@
+# AI Access Hub 
+
+>  **Demo Project** - This is a demonstration/portfolio project. No actual payments are processed. Currently, Gemini 2.5 Flash is functional for testing purposes. More models and features are planned for future development.
+
+A modern pay-per-hour AI chat platform that provides flexible, subscription-free access to premium AI models. Built as a full-stack application demonstrating real-time chat, session management, and multi-tier pricing architecture.
+
+## Features
+
+- **Multimodal Chat Interface** - Supports text, PDF, image, and DOCX file uploads
+- **Session-Based Access** - Time-limited sessions (1-4 hours) with live countdown timers
+- **Tiered Pricing Model** - Three plan levels: Flash Lite, Flash, and Pro (demo only)
+- **Persistent Chat History** - Conversations saved per session with full message history
+- **User Authentication** - Secure signup/login with session management
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Frontend | React 18, TypeScript, Vite, Tailwind CSS |
+| UI Components | shadcn/ui, Radix UI primitives |
+| Backend | Supabase (PostgreSQL, Auth, Edge Functions) |
+| AI Integration | Lovable AI Gateway (Gemini 2.5 models) |
+| State Management | TanStack Query, React Context |
+
+## Current Status
+
+| Model | Status |
+|-------|--------|
+| Gemini 2.5 Flash Lite | Planned |
+| Gemini 2.5 Flash | ✅ Working |
+| Gemini 2.5 Pro | Planned |
+
+## Roadmap
+
+- [ ] Additional AI models (GPT-5, Claude)
+- [ ] Real payment integration (Stripe)
+- [ ] Usage analytics dashboard
+- [ ] Team/organization accounts
+- [ ] API access for developers
 
 
 
