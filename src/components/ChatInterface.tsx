@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
@@ -6,6 +6,8 @@ import { Send, Sparkles } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { FileAttachment } from "@/components/FileAttachment";
+import { MessageNavigator } from "@/components/chat/MessageNavigator";
+import { useMessageNavigation } from "@/hooks/useMessageNavigation";
 
 interface Message {
   role: "user" | "assistant";
@@ -42,6 +44,7 @@ export const ChatInterface = ({ session, onTokenUpdate }: ChatInterfaceProps) =>
   }>>([]);
   const [fileAttachmentKey, setFileAttachmentKey] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { setMessageRef, scrollToMessage } = useMessageNavigation();
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -263,10 +266,16 @@ export const ChatInterface = ({ session, onTokenUpdate }: ChatInterfaceProps) =>
   return (
     <Card className="border shadow-none">
       <CardHeader className="space-y-1">
-        <CardTitle className="flex items-center gap-2 text-lg font-light">
-          <Sparkles className="w-4 h-4" />
-          Chat with {session.model_name.replace(/google\/|gemini-|-/g, ' ')}
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-lg font-light">
+            <Sparkles className="w-4 h-4" />
+            Chat with {session.model_name.replace(/google\/|gemini-|-/g, ' ')}
+          </CardTitle>
+          <MessageNavigator 
+            messages={messages} 
+            onMessageClick={scrollToMessage} 
+          />
+        </div>
         <p className="text-xs text-muted-foreground">
           💾 This entire chat session is automatically saved. View all your sessions in Chat History.
         </p>
@@ -276,7 +285,8 @@ export const ChatInterface = ({ session, onTokenUpdate }: ChatInterfaceProps) =>
           {messages.map((message, index) => (
             <div
               key={index}
-              className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
+              ref={(el) => setMessageRef(index, el)}
+              className={`flex transition-all duration-300 ${message.role === "user" ? "justify-end" : "justify-start"}`}
             >
               <div
                 className={`max-w-[80%] rounded px-4 py-3 ${
