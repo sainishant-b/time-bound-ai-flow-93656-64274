@@ -282,33 +282,58 @@ export const ChatInterface = ({ session, onTokenUpdate }: ChatInterfaceProps) =>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="h-[500px] overflow-y-auto space-y-3 p-4 rounded border border-border">
-          {messages.map((message, index) => (
-            <div
-              key={index}
-              ref={(el) => setMessageRef(index, el)}
-              className={`flex transition-all duration-300 ${message.role === "user" ? "justify-end" : "justify-start"}`}
-            >
-              <div
-                className={`max-w-[80%] rounded px-4 py-3 ${
-                  message.role === "user"
-                    ? "bg-foreground text-background"
-                    : "bg-secondary text-foreground border border-border"
-                }`}
-              >
-                <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
-                {message.files && message.files.length > 0 && (
-                  <div className="mt-2 pt-2 border-t border-current/20">
-                    <p className="text-xs opacity-70 mb-1">Attachments:</p>
-                    {message.files.map((file, idx) => (
-                      <p key={idx} className="text-xs opacity-80">
-                        📎 {file.name} ({Math.round(file.size / 1024)}KB)
-                      </p>
-                    ))}
+          {messages.reduce((acc: JSX.Element[], message, index) => {
+            // Group user message with following AI response
+            if (message.role === "user") {
+              const aiResponse = messages[index + 1];
+              acc.push(
+                <div
+                  key={index}
+                  ref={(el) => setMessageRef(index, el)}
+                  className="space-y-2 transition-all duration-300"
+                >
+                  {/* User message */}
+                  <div className="flex justify-end">
+                    <div className="max-w-[80%] rounded px-4 py-3 bg-foreground text-background">
+                      <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                      {message.files && message.files.length > 0 && (
+                        <div className="mt-2 pt-2 border-t border-current/20">
+                          <p className="text-xs opacity-70 mb-1">Attachments:</p>
+                          {message.files.map((file, idx) => (
+                            <p key={idx} className="text-xs opacity-80">
+                              📎 {file.name} ({Math.round(file.size / 1024)}KB)
+                            </p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                )}
-              </div>
-            </div>
-          ))}
+                  {/* AI response (if exists) */}
+                  {aiResponse && aiResponse.role === "assistant" && (
+                    <div className="flex justify-start">
+                      <div className="max-w-[80%] rounded px-4 py-3 bg-secondary text-foreground border border-border">
+                        <p className="text-sm whitespace-pre-wrap leading-relaxed">{aiResponse.content}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            } else if (index === 0 || messages[index - 1]?.role !== "user") {
+              // Standalone AI message (like greeting)
+              acc.push(
+                <div
+                  key={index}
+                  ref={(el) => setMessageRef(index, el)}
+                  className="flex justify-start transition-all duration-300"
+                >
+                  <div className="max-w-[80%] rounded px-4 py-3 bg-secondary text-foreground border border-border">
+                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                  </div>
+                </div>
+              );
+            }
+            return acc;
+          }, [])}
           {isTyping && (
             <div className="flex justify-start">
               <div className="bg-secondary border border-border rounded px-4 py-3">
